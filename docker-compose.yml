@@ -1,0 +1,26 @@
+services:
+  janus:
+    build: 
+      context: ./janus
+    ports:
+      - "8188:8188"  # WebSocket
+      - "8088:8088"  # REST API
+      - "6000:6000/udp"  # RTP input port
+      - "6001:6001/udp"  # RTCP port
+      - "8004:8004/udp"  # RTP output port
+    volumes:
+      - ./janus/conf/janus.plugin.videoroom.jcfg:/usr/local/etc/janus/janus.plugin.videoroom.jcfg
+      - ./janus/conf/janus.plugin.streaming.jcfg:/usr/local/etc/janus/janus.plugin.streaming.jcfg
+    networks:
+      - video_network
+
+  video_processor:
+    build:
+      context: ./processor
+    network_mode: "host"  # Important for RTP communication
+    depends_on:
+      - janus
+
+networks:
+  video_network:
+    driver: bridge 

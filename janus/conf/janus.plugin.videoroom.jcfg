@@ -1,0 +1,26 @@
+general: {
+    events = true                    # Whether to notify event handlers about room events
+    json = "indented"               # Format of JSON messages
+    string_ids = false              # Use numeric room IDs
+    rtp_forward = true              # Enable RTP forwarding globally
+    rtp_forward_always_on = true    # Keep RTP forwarders alive
+    notify_joining = true           # Notify about joins
+    notify_leaving = true           # Notify about leaves
+    admin_key = "janusoverlord"
+}
+
+room-1234: {
+    description = "Video Processing Room"
+    is_private = false
+    secret = "adminpwd123"
+    publishers = 1
+    videoorient_ext = true
+    video_svc = false
+    video_codec = "vp9"
+    
+    # RTP forwarding configuration
+    rtp_forward_video_pt = 96
+    rtp_forward_host = "127.0.0.1"
+    rtp_forward_port = 6000
+    rtp_forward_codec = "vp9"
+}

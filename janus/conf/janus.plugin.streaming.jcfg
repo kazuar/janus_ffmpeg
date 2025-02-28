@@ -1,0 +1,21 @@
+general: {
+    events = true,
+    debug_level = 4,
+    admin_key = "janusoverlord"
+}
+
+stream-5000: {
+    type = "rtp"
+    id = 1
+    description = "Processed Video"
+    video = true                # Changed: Enable video flag
+    videoport = 6000
+    videopt = 96               # Added: RTP payload type for VP9
+    videortcp = true          # Added: Enable RTCP for video
+    videortcpport = 6001      # Added: RTCP port
+    videofmtp = "profile-id=0" # Added: VP9 format parameters
+    videocap = "VP9"          # Added: Video codec capability
+    videocodec = "vp9"        # Added: Required video codec specification
+    videobufferkf = true      # Added: Buffer until keyframe is received
+    url = "127.0.0.1"         # Added: Source IP address
+}
