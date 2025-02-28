@@ -2,20 +2,44 @@
 <html>
 <head>
     <title>Video Processing Demo</title>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.1.1/adapter.min.js"></script>
     <script 
         src="https://cdn.jsdelivr.net/npm/janus-gateway@1.3.0/npm/src/janus.js" 
         onerror="console.error('Failed to load Janus library')"
     ></script>
-    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <script type="text/javascript" src="app.js"></script>
+    <style>
+        .video-container {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        video {
+            border: 1px solid #ccc;
+            background: #f0f0f0;
+        }
+        #status {
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background: #f9f9f9;
+            min-height: 20px;
+        }
+    </style>
 </head>
 <body>
-    <div>
-        <video id="localVideo" autoplay playsinline></video>
-        <video id="remoteVideo" autoplay playsinline></video>
+    <div class="video-container">
+        <div>
+            <h3>Local Video</h3>
+            <video id="localVideo" width="640" height="360" autoplay playsinline muted></video>
+        </div>
+        <div>
+            <h3>Processed Video</h3>
+            <video id="remoteVideo" width="640" height="360" autoplay playsinline></video>
+        </div>
     </div>
     <button id="start">Start Streaming</button>
+    <div id="status">Status: Ready</div>
 </body>
 </html> 
