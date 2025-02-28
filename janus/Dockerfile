@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y \
 
 # Copy the configuration files
 COPY conf/janus.plugin.videoroom.jcfg /usr/local/etc/janus/
-COPY conf/janus.plugin.streaming.jcfg /usr/local/etc/janus/
 
 # Expose ports
 EXPOSE 8188

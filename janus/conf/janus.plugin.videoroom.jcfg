@@ -20,7 +20,7 @@ room-1234: {
     
     # RTP forwarding configuration
     rtp_forward_video_pt = 96
-    rtp_forward_host = "127.0.0.1"
-    rtp_forward_port = 6000
+    rtp_forward_host = "video_processor"
+    rtp_forward_port = 6002
     rtp_forward_codec = "vp9"
 }

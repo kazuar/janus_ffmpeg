@@ -1,10 +1,8 @@
 import cv2
 import numpy as np
 import subprocess
-import ffmpeg
-from flask import Flask, Response
-
-app = Flask(__name__)
+import socket
+# import ffmpeg
 
 def apply_filter(frame):
     # Example filter - you can modify this
@@ -15,7 +13,8 @@ def process_video_stream():
     # Input stream configuration - receive RTP from Janus
     input_args = [
         'ffmpeg',
-        '-i', 'rtp://127.0.0.1:6000',  # Match the videoport in streaming plugin
+        '-listen', '1',  # Enable listening mode
+        '-i', 'rtp://0.0.0.0:6002?pkt_size=1200',  # Changed port to 6002
         '-protocol_whitelist', 'file,rtp,udp',
         '-fflags', 'nobuffer',
         '-flags', 'low_delay',
@@ -37,12 +36,12 @@ def process_video_stream():
         '-c:v', 'libvpx-vp9',
         '-f', 'rtp',
         '-payload_type', '96',
-        'rtp://127.0.0.1:8004'  # Match the port in docker-compose.yml
+        'rtp://janus:8004'  # Use container name instead of localhost
     ]
 
     # Start FFmpeg processes
-    input_process = subprocess.Popen(input_args, stdout=subprocess.PIPE)
-    output_process = subprocess.Popen(output_args, stdin=subprocess.PIPE)
+    input_process = subprocess.Popen(input_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output_process = subprocess.Popen(output_args, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
     try:
         while True:
@@ -50,6 +49,10 @@ def process_video_stream():
             frame_size = 1280 * 720 * 3  # width * height * 3 (BGR)
             raw_frame = input_process.stdout.read(frame_size)
             if not raw_frame:
+                # Check for FFmpeg errors
+                error = input_process.stderr.read()
+                if error:
+                    print("FFmpeg input error:", error.decode())
                 break
 
             # Convert to numpy array
@@ -62,14 +65,11 @@ def process_video_stream():
             output_process.stdin.write(processed_frame.tobytes())
             output_process.stdin.flush()
 
+    except Exception as e:
+        print(f"Error in video processing: {e}")
     finally:
         input_process.terminate()
         output_process.terminate()
 
-@app.route('/process')
-def video_feed():
-    return Response(process_video_stream(),
-                   mimetype='multipart/x-mixed-replace; boundary=frame')
-
 if __name__ == '__main__':
-    process_video_stream() 
+    process_video_stream()

@@ -2,9 +2,14 @@
 <html>
 <head>
     <title>Video Processing Demo</title>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.1.1/adapter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc-adapter/8.1.1/adapter.min.js"></script>
+    <script 
+        src="https://cdn.jsdelivr.net/npm/janus-gateway@1.3.0/npm/src/janus.js" 
+        onerror="console.error('Failed to load Janus library')"
+    ></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script type="text/javascript" src="janus.js"></script>
+    <script type="text/javascript" src="app.js"></script>
 </head>
 <body>
     <div>

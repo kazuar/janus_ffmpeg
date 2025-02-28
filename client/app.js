@@ -8,7 +8,7 @@ $(document).ready(function() {
         debug: true,
         callback: function() {
             janus = new Janus({
-                server: window.location.protocol.replace('http', 'ws') + '//' + window.location.hostname + ':8188',
+                server: 'http://localhost:8088/janus',
                 success: function() {
                     janus.attach({
                         plugin: "janus.plugin.videoroom",

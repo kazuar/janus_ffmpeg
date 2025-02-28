@@ -5,21 +5,23 @@ services:
     ports:
       - "8188:8188"  # WebSocket
       - "8088:8088"  # REST API
-      - "6000:6000/udp"  # RTP input port
+      - "6002:6002/udp"  # RTP port for video processor
       - "6001:6001/udp"  # RTCP port
       - "8004:8004/udp"  # RTP output port
     volumes:
       - ./janus/conf/janus.plugin.videoroom.jcfg:/usr/local/etc/janus/janus.plugin.videoroom.jcfg
-      - ./janus/conf/janus.plugin.streaming.jcfg:/usr/local/etc/janus/janus.plugin.streaming.jcfg
     networks:
       - video_network
 
   video_processor:
     build:
       context: ./processor
-    network_mode: "host"  # Important for RTP communication
+    networks:
+      - video_network  # Use Docker network instead of host
     depends_on:
-      - janus
+      janus:
+        condition: service_started
+    restart: unless-stopped
 
 networks:
   video_network:
