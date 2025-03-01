@@ -12,6 +12,7 @@ services:
       - "20000-20050:20000-20050/udp"  # Smaller WebRTC port range
     volumes:
       - ./janus/conf/janus.plugin.videoroom.jcfg:/usr/local/etc/janus/janus.plugin.videoroom.jcfg
+      - ./janus/conf/janus.plugin.streaming.jcfg:/usr/local/etc/janus/janus.plugin.streaming.jcfg
       - ./janus/conf/janus.jcfg:/usr/local/etc/janus/janus.jcfg
     networks:
       - video_network

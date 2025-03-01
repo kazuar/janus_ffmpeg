@@ -1,0 +1,14 @@
+general: {
+    debug_level = 4
+}
+
+processed-stream: {
+    type = "rtp"
+    id = 1
+    description = "Processed Video Stream"
+    video = true
+    videoport = 6001
+    videopt = 96
+    videortpmap = "VP8/90000"
+    videofmtp = "max-fs=3600"
+}

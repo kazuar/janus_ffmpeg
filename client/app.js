@@ -1,9 +1,10 @@
 let janus = null;
 let videoroom = null;
-let myroom = 1234;  // Match with your videoroom config
+let streaming = null;  // Handle for streaming plugin
+let myroom = 1234;
 let myusername = "user" + Janus.randomString(10);
 let localStream = null;
-let myid = null;  // Add this to store our publisher ID
+let myid = null;
 
 $(document).ready(function() {
     // First, check if WebRTC is supported
@@ -44,45 +45,33 @@ function initJanus() {
     Janus.init({
         debug: "all",
         callback: function() {
-            console.log("Janus initialized");
             janus = new Janus({
                 server: 'ws://localhost:8188/janus',
-                iceServers: [], // Empty array for local-only connections
-                ipv6: false,    // Disable IPv6
-                withCredentials: false,
                 success: function() {
-                    console.log("Connected to Janus gateway");
+                    // First attach to videoroom plugin for publishing
                     janus.attach({
                         plugin: "janus.plugin.videoroom",
                         success: function(pluginHandle) {
-                            console.log("Plugin attached! (" + pluginHandle.getPlugin() + ", id=" + pluginHandle.getId() + ")");
                             videoroom = pluginHandle;
-                            
-                            // Join the video room
                             videoroom.send({
                                 message: {
                                     request: "join",
                                     room: myroom,
                                     ptype: "publisher",
                                     display: myusername,
+                                    pin: "roompwd123",
                                     secret: "adminpwd123"
                                 }
                             });
                         },
                         onmessage: function(msg, jsep) {
-                            console.log("Got message:", msg);
+                            console.log("Videoroom message:", msg);
                             if (msg["videoroom"] === "joined") {
-                                console.log("Successfully joined as publisher", msg);
                                 myid = msg["id"];
                                 publishOwnFeed();
                             } else if (msg["videoroom"] === "event") {
                                 if (msg["configured"] === "ok") {
-                                    console.log("Publisher configured, setting up RTP forwarding");
-                                    if (!myid) {
-                                        console.error("No publisher ID available!");
-                                        return;
-                                    }
-                                    // Now that we're published, set up RTP forwarding
+                                    // Set up RTP forwarding to video processor
                                     videoroom.send({
                                         message: {
                                             request: "rtp_forward",
@@ -90,69 +79,83 @@ function initJanus() {
                                             publisher_id: myid,
                                             host: "video_processor",
                                             port: 6002,
-                                            audio_port: 0,
                                             video_port: 6002,
                                             video_pt: 96,
                                             video_codec: "vp8",
-                                            secret: "adminpwd123"
+                                            secret: "adminpwd123"  // Add secret for RTP forwarding
                                         }
                                     });
-                                    $('#status').text("Stream configured, setting up processing");
-                                } else if (msg["rtp_forward"] === "ok") {
-                                    console.log("RTP forwarding configured, subscribing to processed feed");
-                                    $('#status').text("RTP forwarding configured, subscribing...");
-                                    subscribeToProcessedFeed();
-                                } else if (msg["publishers"]) {
-                                    console.log("Got publishers:", msg["publishers"]);
-                                    let list = msg["publishers"];
-                                    for(let publisher of list) {
-                                        if(publisher["id"] !== myid) {
-                                            console.log("Found processed feed, subscribing...");
-                                            let subscribe = {
-                                                request: "join",
-                                                room: myroom,
-                                                ptype: "subscriber",
-                                                feed: publisher["id"],
-                                                private_id: 123
-                                            };
-                                            videoroom.send({message: subscribe});
-                                        }
-                                    }
+                                    // Now attach to streaming plugin
+                                    attachProcessedStream();
                                 }
                             }
-                            if (jsep) {
-                                console.log("Got jsep:", jsep);
-                                videoroom.handleRemoteJsep({ jsep: jsep });
+                            if(jsep) {
+                                videoroom.handleRemoteJsep({jsep: jsep});
                             }
                         },
                         onlocalstream: function(stream) {
-                            console.log("Got local stream in Janus", stream);
-                        },
-                        onremotestream: function(stream) {
-                            console.log("Got remote stream", stream);
-                            let video = $('#remoteVideo').get(0);
+                            let video = $('#localVideo').get(0);
                             video.srcObject = stream;
-                            video.play().catch(function(error) {
-                                console.error("Error playing remote video:", error);
-                            });
-                        },
-                        error: function(error) {
-                            console.error("Error in videoroom plugin:", error);
-                            $('#status').text("Error in video room: " + error);
-                        },
-                        oncleanup: function() {
-                            console.log("Got cleanup notification");
-                        },
-                        destroyed: function() {
-                            console.log('destroyed');
+                            video.play();
                         }
                     });
-                },
-                error: function(error) {
-                    console.error("Error creating Janus instance:", error);
-                    $('#status').text("Error connecting to Janus: " + error);
                 }
             });
+        }
+    });
+}
+
+function attachProcessedStream() {
+    // Attach to streaming plugin for processed video
+    janus.attach({
+        plugin: "janus.plugin.streaming",
+        success: function(pluginHandle) {
+            streaming = pluginHandle;
+            console.log("Attached to streaming plugin, watching stream ID 1");
+            streaming.send({
+                message: {
+                    request: "watch",
+                    id: 1  // ID from streaming plugin config
+                }
+            });
+        },
+        error: function(error) {
+            console.error("Error attaching to streaming plugin:", error);
+            $('#status').text("Error attaching to streaming plugin: " + error);
+        },
+        onmessage: function(msg, jsep) {
+            console.log("Streaming message:", msg);
+            if(msg["streaming"] === "event") {
+                $('#status').text("Streaming event: " + msg["result"]);
+            }
+            if(jsep) {
+                streaming.createAnswer({
+                    jsep: jsep,
+                    media: { audioSend: false, videoSend: false },  // We're only receiving
+                    success: function(jsep) {
+                        streaming.send({
+                            message: { request: "start" },
+                            jsep: jsep
+                        });
+                    },
+                    error: function(error) {
+                        console.error("Error creating streaming answer:", error);
+                        $('#status').text("Error creating streaming answer: " + error);
+                    }
+                });
+            }
+        },
+        onremotestream: function(stream) {
+            console.log("Got processed stream");
+            let video = $('#remoteVideo').get(0);
+            video.srcObject = stream;
+            video.play().catch(function(error) {
+                console.error("Error playing processed video:", error);
+            });
+        },
+        oncleanup: function() {
+            console.log("Streaming plugin cleanup");
+            $('#status').text("Streaming stopped");
         }
     });
 }

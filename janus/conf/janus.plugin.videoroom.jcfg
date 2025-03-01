@@ -11,7 +11,8 @@ general: {
 room-1234: {
     description = "Video Processing Room"
     is_private = false
-    secret = "adminpwd123"
+    secret = "adminpwd123"         # Make sure this matches
+    pin = "roompwd123"            # Add a room pin
     publishers = 1
     video_codec = "vp8"
     
@@ -23,10 +24,6 @@ room-1234: {
     rtp_forward_video_ssrc = 1234
     rtp_forward_always_on = true
     rtp_forward_bufferkf = true
-    
-    # Add return path configuration
-    rtp_return_port = 6001
-    rtp_return_enabled = true
     
     # Video quality settings
     video_bitrate = 2048000

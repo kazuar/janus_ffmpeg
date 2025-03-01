@@ -41,10 +41,14 @@ c=IN IP4 0.0.0.0
 t=0 0
 m=video 6002 RTP/AVP 96
 a=rtpmap:96 VP8/90000
-a=recvonly
+a=fmtp:96 max-fr=30;max-fs=3600
+a=sendrecv
 a=rtcp-mux
-a=framerate:30
-a=fmtp:96 max-fr=30;max-fs=3600;width=1280;height=720
+a=setup:passive
+a=mid:video
+a=ice-ufrag:video
+a=ice-pwd:video123
+a=fingerprint:sha-256 D2:B9:31:8F:DF:24:D8:0E:ED:D2:EF:25:9E:AF:6F:B8:34:AE:53:9C:E6:F3:8F:F2:64:15:FA:E8:7F:53:2D:38
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -65,15 +69,19 @@ def process_video_stream():
         '-analyzeduration', '30M',
         '-protocol_whitelist', 'file,rtp,udp',
         '-i', 'input.sdp',
-        '-map', '0:v:0',
-        '-c:v', 'libvpx',  # Use libvpx encoder instead of copy
-        '-b:v', '2M',      # Set bitrate
-        '-deadline', 'realtime',  # Optimize for realtime
-        '-cpu-used', '4',  # Speed up encoding
-        '-auto-alt-ref', '0',  # Disable alt refs for lower latency
+        '-filter_complex', '[0:v]scale=1280:720,format=yuv420p[v]',
+        '-map', '[v]',
+        '-c:v', 'libvpx',
+        '-b:v', '2M',
+        '-deadline', 'realtime',
+        '-cpu-used', '4',
+        '-auto-alt-ref', '0',
+        '-keyint_min', '15',
+        '-g', '15',
         '-f', 'rtp',
         '-payload_type', '96',
         '-ssrc', '1234',
+        '-sdp_file', 'output.sdp',
         f'rtp://janus:6001?pkt_size=1200'
     ]
 
@@ -86,6 +94,7 @@ def process_video_stream():
         )
         
         logging.info("FFmpeg process started successfully")
+        logging.debug(f"FFmpeg command: {' '.join(input_args)}")
         
         # Monitor the process
         def log_stderr(process, name):
@@ -94,7 +103,7 @@ def process_video_stream():
                 if not line:
                     break
                 line = line.decode('utf-8', errors='ignore').strip()
-                if line and not line.startswith('frame='):
+                if line:  # Remove the frame= filter to see all output
                     if 'error' in line.lower() or 'could not' in line.lower():
                         logging.error(f"{name} FFmpeg error: {line}")
                     else:
