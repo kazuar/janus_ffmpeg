@@ -19,8 +19,8 @@ The system consists of three main components:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/janus-video-processor.git
-cd janus-video-processor
+git clone https://github.com/kazuar/janus_ffmpeg.git
+cd janus_ffmpeg
 ```
 
 2. Build and start the Docker containers:
