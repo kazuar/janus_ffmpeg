@@ -1,5 +1,6 @@
 services:
   janus:
+    platform: linux/${TARGETARCH:-amd64}
     build: 
       context: ./janus
     ports:
@@ -16,14 +17,27 @@ services:
       - video_network
 
   video_processor:
+    platform: linux/${TARGETARCH:-amd64}
     build:
       context: ./processor
     networks:
-      - video_network  # Use Docker network instead of host
+      - video_network
     depends_on:
-      janus:
-        condition: service_started
+      - janus
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.bind(('0.0.0.0',6002))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    cap_add:
+      - NET_ADMIN
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    environment:
+      - UDP_BUFFER_SIZE=26214400
 
 networks:
   video_network:

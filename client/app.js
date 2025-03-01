@@ -3,6 +3,7 @@ let videoroom = null;
 let myroom = 1234;  // Match with your videoroom config
 let myusername = "user" + Janus.randomString(10);
 let localStream = null;
+let myid = null;  // Add this to store our publisher ID
 
 $(document).ready(function() {
     // First, check if WebRTC is supported
@@ -41,12 +42,13 @@ $(document).ready(function() {
 
 function initJanus() {
     Janus.init({
-        debug: true,
+        debug: "all",
         callback: function() {
             console.log("Janus initialized");
             janus = new Janus({
                 server: 'ws://localhost:8188/janus',
-                ipv6: false,
+                iceServers: [], // Empty array for local-only connections
+                ipv6: false,    // Disable IPv6
                 withCredentials: false,
                 success: function() {
                     console.log("Connected to Janus gateway");
@@ -62,7 +64,8 @@ function initJanus() {
                                     request: "join",
                                     room: myroom,
                                     ptype: "publisher",
-                                    display: myusername
+                                    display: myusername,
+                                    secret: "adminpwd123"
                                 }
                             });
                         },
@@ -70,13 +73,35 @@ function initJanus() {
                             console.log("Got message:", msg);
                             if (msg["videoroom"] === "joined") {
                                 console.log("Successfully joined room", msg);
-                                
-                                // After joining, publish our stream
+                                myid = msg["id"];  // Store our publisher ID when we join
+                                // First publish our feed
                                 publishOwnFeed();
-                                
                             } else if (msg["videoroom"] === "event") {
                                 if (msg["configured"] === "ok") {
-                                    console.log("Publisher configured");
+                                    console.log("Publisher configured, setting up RTP forwarding");
+                                    if (!myid) {
+                                        console.error("No publisher ID available!");
+                                        return;
+                                    }
+                                    // Now that we're published, set up RTP forwarding
+                                    videoroom.send({
+                                        message: {
+                                            request: "rtp_forward",
+                                            room: myroom,
+                                            publisher_id: myid,  // Use our stored publisher ID
+                                            host: "video_processor",
+                                            port: 6002,
+                                            audio_port: 0,
+                                            video_port: 6002,
+                                            video_pt: 96,
+                                            video_codec: "vp8",
+                                            secret: "adminpwd123"
+                                        }
+                                    });
+                                    $('#status').text("Stream configured, setting up processing");
+                                } else if (msg["rtp_forward"] === "ok") {
+                                    console.log("RTP forwarding configured");
+                                    $('#status').text("Processing stream...");
                                 } else if (msg["publishers"]) {
                                     console.log("Got publishers:", msg["publishers"]);
                                 }
@@ -103,6 +128,9 @@ function initJanus() {
                         },
                         oncleanup: function() {
                             console.log("Got cleanup notification");
+                        },
+                        destroyed: function() {
+                            console.log('destroyed');
                         }
                     });
                 },
@@ -119,9 +147,14 @@ function publishOwnFeed() {
     videoroom.createOffer({
         media: {
             audioRecv: false,
-            videoRecv: true,
+            videoRecv: false,
             audioSend: false,
-            videoSend: true
+            videoSend: true,
+            video: {
+                width: 1280,
+                height: 720,
+                codec: "vp8"
+            }
         },
         stream: localStream,
         success: function(jsep) {

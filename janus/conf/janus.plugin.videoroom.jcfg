@@ -6,7 +6,6 @@ general: {
     rtp_forward_always_on = true    # Keep RTP forwarders alive
     notify_joining = true           # Notify about joins
     notify_leaving = true           # Notify about leaves
-    admin_key = "janusoverlord"
 }
 
 room-1234: {
@@ -14,13 +13,18 @@ room-1234: {
     is_private = false
     secret = "adminpwd123"
     publishers = 1
-    videoorient_ext = true
-    video_svc = false
-    video_codec = "vp9"
+    video_codec = "vp8"
     
     # RTP forwarding configuration
     rtp_forward_video_pt = 96
     rtp_forward_host = "video_processor"
     rtp_forward_port = 6002
-    rtp_forward_codec = "vp9"
+    rtp_forward_codec = "vp8"
+    rtp_forward_video_ssrc = 1234
+    rtp_forward_always_on = true
+    rtp_forward_bufferkf = true
+    
+    # Video quality settings
+    video_bitrate = 2048000
+    video_keyframe_interval = 15
 }
