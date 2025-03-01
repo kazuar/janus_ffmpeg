@@ -7,6 +7,7 @@ import logging
 import os
 import socket
 import threading
+import numpy as np
 
 
 # Configure logging
@@ -42,10 +43,7 @@ t=0 0
 m=video 6002 RTP/AVP 96
 a=rtpmap:96 VP8/90000
 a=fmtp:96 max-fr=30;max-fs=3600
-a=sendrecv
-a=rtcp-mux
-a=framerate:30
-a=imageattr:96 recv [x=[320:1920],y=[240:1080]] send [x=[320:1920],y=[240:1080]]
+a=recvonly
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -62,29 +60,45 @@ def process_video_stream():
         'ffmpeg',
         '-hide_banner',
         '-thread_queue_size', '8192',
-        '-probesize', '128M',
-        '-analyzeduration', '30M',
+        '-probesize', '256M',
+        '-analyzeduration', '60M',
         '-protocol_whitelist', 'file,rtp,udp',
         '-buffer_size', '10M',
         '-i', 'input.sdp',
-        '-filter_complex', '[0:v]scale=w=1280:h=720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p[v]',
-        '-map', '[v]',
+        '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',
+        '-c:v', 'rawvideo',
+        '-pix_fmt', 'bgr24',
+        '-f', 'rawvideo',
+        '-video_size', '1280x720',
+        '-'
+    ]
+
+    # Output stream configuration
+    output_args = [
+        'ffmpeg',
+        '-hide_banner',
+        '-f', 'rawvideo',
+        '-pixel_format', 'bgr24',
+        '-video_size', '1280x720',
+        '-framerate', '30',
+        '-i', '-',
         '-c:v', 'libvpx',
-        '-b:v', '1M',
+        '-b:v', '2M',
         '-deadline', 'realtime',
-        '-cpu-used', '8',
+        '-cpu-used', '4',
         '-auto-alt-ref', '0',
         '-lag-in-frames', '0',
         '-error-resilient', '1',
-        '-keyint_min', '30',
-        '-g', '30',
-        '-bufsize', '2M',
-        '-rc_lookahead', '0',
+        '-keyint_min', '15',
+        '-g', '15',
+        '-bufsize', '4M',
+        '-rc_lookahead', '10',
         '-quality', 'realtime',
         '-max_muxing_queue_size', '1024',
         '-max_delay', '0',
         '-fflags', 'nobuffer+discardcorrupt+fastseek',
         '-flags', 'low_delay',
+        '-force_key_frames', 'expr:gte(t,n_forced*1)',
         '-f', 'rtp',
         '-payload_type', '96',
         '-ssrc', '1234',
@@ -93,19 +107,26 @@ def process_video_stream():
     ]
 
     try:
+        # Start input FFmpeg process
         input_process = subprocess.Popen(
             input_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            bufsize=0
+            bufsize=10*1024*1024  # 10MB buffer
         )
         
-        logging.info("FFmpeg process started successfully")
-        logging.debug(f"FFmpeg command: {' '.join(input_args)}")
+        # Start output FFmpeg process
+        output_process = subprocess.Popen(
+            output_args,
+            stdin=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            bufsize=10*1024*1024  # 10MB buffer
+        )
         
-        # Monitor the process
+        logging.info("FFmpeg processes started successfully")
+        
+        # Start error logging threads
         def log_stderr(process, name):
-            consecutive_errors = 0
             while True:
                 line = process.stderr.readline()
                 if not line:
@@ -113,30 +134,75 @@ def process_video_stream():
                 line = line.decode('utf-8', errors='ignore').strip()
                 if line:
                     if 'error' in line.lower() or 'could not' in line.lower():
-                        consecutive_errors += 1
                         logging.error(f"{name} FFmpeg error: {line}")
-                        if consecutive_errors > 10:
-                            logging.error("Too many consecutive errors, restarting...")
-                            process.terminate()
-                            break
                     else:
-                        consecutive_errors = 0
-                        if 'frame=' in line:  # Log frame processing
-                            logging.info(f"{name} FFmpeg processing: {line}")
-                        else:
-                            logging.debug(f"{name} FFmpeg: {line}")
+                        logging.debug(f"{name} FFmpeg: {line}")
         
-        # Start monitoring thread
         input_thread = threading.Thread(target=log_stderr, args=(input_process, "Input"))
+        output_thread = threading.Thread(target=log_stderr, args=(output_process, "Output"))
         input_thread.daemon = True
+        output_thread.daemon = True
         input_thread.start()
-        
-        # Wait for process to complete
-        input_process.wait()
-        
+        output_thread.start()
+
+        # Process frames with OpenCV
+        frame_size = 1280 * 720 * 3  # width * height * 3 channels (BGR)
+        while True:
+            # Read raw video frame from input
+            raw_frame = input_process.stdout.read(frame_size)
+            if not raw_frame:
+                break
+            
+            try:
+                # Convert to numpy array for OpenCV
+                frame = np.frombuffer(raw_frame, np.uint8).reshape(720, 1280, 3)
+                
+                # Apply more pronounced edge detection
+                edges = cv2.Canny(frame, 50, 150)  # Adjusted thresholds
+                edges = cv2.dilate(edges, None)  # Make edges thicker
+                
+                # Create colored edge overlay with brighter color
+                colored_edges = np.zeros_like(frame)
+                colored_edges[edges > 0] = [0, 255, 0]  # Bright green edges
+                
+                # Add some visual effects
+                blurred = cv2.GaussianBlur(frame, (5, 5), 0)
+                sharpened = cv2.addWeighted(frame, 1.5, blurred, -0.5, 0)
+                
+                # Blend original frame with edges more prominently
+                processed_frame = cv2.addWeighted(sharpened, 0.6, colored_edges, 0.4, 0)
+                
+                # Add text overlay to confirm processing
+                cv2.putText(processed_frame, 
+                          'Processed Feed', 
+                          (50, 50), 
+                          cv2.FONT_HERSHEY_SIMPLEX, 
+                          1, 
+                          (0, 255, 0), 
+                          2)
+                
+                # Ensure frame is in correct format
+                if processed_frame.shape != (720, 1280, 3):
+                    processed_frame = cv2.resize(processed_frame, (1280, 720))
+                
+                # Write processed frame to output
+                output_process.stdin.write(processed_frame.tobytes())
+                output_process.stdin.flush()
+            
+            except Exception as e:
+                logging.error(f"Error processing frame: {e}")
+                continue
+
     except Exception as e:
         logging.error(f"Error in video processing: {e}")
         raise
+    finally:
+        # Cleanup
+        try:
+            input_process.terminate()
+            output_process.terminate()
+        except:
+            pass
 
 if __name__ == "__main__":
     logging.info("Video processor starting up...")
