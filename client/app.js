@@ -46,76 +46,94 @@ function initJanus() {
         debug: "all",
         callback: function() {
             janus = new Janus({
-                server: 'ws://localhost:8188/janus',
+                server: window.SERVER_CONFIG.janus_server,
                 success: function() {
-                    // First attach to videoroom plugin for publishing
-                    janus.attach({
-                        plugin: "janus.plugin.videoroom",
-                        success: function(pluginHandle) {
-                            videoroom = pluginHandle;
-                            videoroom.send({
-                                message: {
-                                    request: "join",
-                                    room: myroom,
-                                    ptype: "publisher",
-                                    display: myusername,
-                                    pin: "roompwd123",
-                                    secret: "adminpwd123"
-                                }
-                            });
-                        },
-                        onmessage: function(msg, jsep) {
-                            console.log("Videoroom message:", msg);
-                            if (msg["videoroom"] === "joined") {
-                                myid = msg["id"];
-                                publishOwnFeed();
-                            } else if (msg["videoroom"] === "event") {
-                                if (msg["configured"] === "ok") {
-                                    // Set up RTP forwarding to video processor
-                                    videoroom.send({
-                                        message: {
-                                            request: "rtp_forward",
-                                            room: myroom,
-                                            publisher_id: myid,
-                                            host: "video_processor",
-                                            port: 6002,
-                                            video_port: 6002,
-                                            video_pt: 96,
-                                            video_codec: "vp8",
-                                            secret: "adminpwd123"  // Add secret for RTP forwarding
-                                        }
-                                    });
-                                    // Now attach to streaming plugin
-                                    attachProcessedStream();
-                                }
-                            }
-                            if(jsep) {
-                                videoroom.handleRemoteJsep({jsep: jsep});
-                            }
-                        },
-                        onlocalstream: function(stream) {
-                            let video = $('#localVideo').get(0);
-                            video.srcObject = stream;
-                            video.play();
-                        }
-                    });
+                    // Attach to videoroom plugin
+                    attachVideoRoom();
+                },
+                error: function(error) {
+                    console.error("Janus error:", error);
                 }
             });
         }
     });
 }
 
+function attachVideoRoom() {
+    janus.attach({
+        plugin: "janus.plugin.videoroom",
+        success: function(pluginHandle) {
+            videoroom = pluginHandle;
+            // Join the room with pin
+            videoroom.send({
+                message: {
+                    request: "join",
+                    room: 1234,
+                    pin: "roompwd123",  // Add room pin
+                    ptype: "publisher",
+                    display: "User " + Math.round(Math.random() * 100)
+                }
+            });
+        },
+        error: function(error) {
+            console.error("Error attaching plugin:", error);
+        },
+        onmessage: function(msg, jsep) {
+            console.log("Videoroom message:", msg);
+            if (msg["videoroom"] === "joined") {
+                myid = msg["id"];
+                publishOwnFeed();
+            } else if (msg["videoroom"] === "event") {
+                if (msg["configured"] === "ok") {
+                    // Set up RTP forwarding to video processor
+                    videoroom.send({
+                        message: {
+                            request: "rtp_forward",
+                            room: 1234,
+                            publisher_id: myid,
+                            host: "video_processor",
+                            port: 6002,
+                            video_port: 6002,
+                            video_pt: 96,
+                            video_codec: "vp8",
+                            secret: "adminpwd123"
+                        },
+                        success: function(result) {
+                            console.log("RTP forwarding setup:", result);
+                            // Now attach to streaming plugin
+                            setTimeout(attachProcessedStream, 1000);  // Add small delay
+                        }
+                    });
+                }
+            }
+            if(jsep) {
+                videoroom.handleRemoteJsep({jsep: jsep});
+            }
+        },
+        onlocalstream: function(stream) {
+            console.log("Got local stream");
+            let video = $('#localVideo').get(0);
+            video.srcObject = stream;
+            video.play().catch(function(error) {
+                console.error("Error playing local video:", error);
+            });
+        }
+    });
+}
+
 function attachProcessedStream() {
-    // Attach to streaming plugin for processed video
+    console.log("Attaching to streaming plugin");
     janus.attach({
         plugin: "janus.plugin.streaming",
         success: function(pluginHandle) {
             streaming = pluginHandle;
-            console.log("Attached to streaming plugin, watching stream ID 1");
+            console.log("Streaming plugin attached, watching stream ID 1");
             streaming.send({
                 message: {
                     request: "watch",
-                    id: 1  // ID from streaming plugin config
+                    id: 1,
+                    offer_video: true,
+                    offer_audio: false
                 }
             });
         },
@@ -125,37 +143,40 @@ function attachProcessedStream() {
         },
         onmessage: function(msg, jsep) {
             console.log("Streaming message:", msg);
-            if(msg["streaming"] === "event") {
-                $('#status').text("Streaming event: " + msg["result"]);
-            }
             if(jsep) {
                 streaming.createAnswer({
                     jsep: jsep,
-                    media: { audioSend: false, videoSend: false },  // We're only receiving
+                    tracks: [
+                        { type: 'video', capture: false, recv: true }
+                    ],
                     success: function(jsep) {
+                        console.log("Got SDP answer:", jsep);
                         streaming.send({
                             message: { request: "start" },
                             jsep: jsep
                         });
                     },
                     error: function(error) {
-                        console.error("Error creating streaming answer:", error);
-                        $('#status').text("Error creating streaming answer: " + error);
+                        console.error("Error creating answer:", error);
                     }
                 });
             }
         },
-        onremotestream: function(stream) {
-            console.log("Got processed stream");
-            let video = $('#remoteVideo').get(0);
-            video.srcObject = stream;
-            video.play().catch(function(error) {
-                console.error("Error playing processed video:", error);
-            });
+        onremotetrack: function(track, mid, on) {
+            console.log("Got remote track:", track.kind);
+            if (track.kind === "video") {
+                let video = $('#remoteVideo').get(0);
+                if (video.srcObject === null) {
+                    video.srcObject = new MediaStream();
+                }
+                if (on) {
+                    video.srcObject.addTrack(track);
+                }
+            }
         },
         oncleanup: function() {
-            console.log("Streaming plugin cleanup");
-            $('#status').text("Streaming stopped");
+            console.log("Got a cleanup notification");
+            $('#remoteVideo').get(0).srcObject = null;
         }
     });
 }

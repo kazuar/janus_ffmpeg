@@ -28,7 +28,8 @@ room-1234: {
     # Video quality settings
     video_bitrate = 2048000
     video_keyframe_interval = 15
-
+    videobuffersize = 6144
+    
     # Allow subscribers
     notify_joining = true
     max_publishers = 2  # Allow for both original and processed feeds

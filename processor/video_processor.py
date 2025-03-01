@@ -44,11 +44,8 @@ a=rtpmap:96 VP8/90000
 a=fmtp:96 max-fr=30;max-fs=3600
 a=sendrecv
 a=rtcp-mux
-a=setup:passive
-a=mid:video
-a=ice-ufrag:video
-a=ice-pwd:video123
-a=fingerprint:sha-256 D2:B9:31:8F:DF:24:D8:0E:ED:D2:EF:25:9E:AF:6F:B8:34:AE:53:9C:E6:F3:8F:F2:64:15:FA:E8:7F:53:2D:38
+a=framerate:30
+a=imageattr:96 recv [x=[320:1920],y=[240:1080]] send [x=[320:1920],y=[240:1080]]
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -68,16 +65,26 @@ def process_video_stream():
         '-probesize', '128M',
         '-analyzeduration', '30M',
         '-protocol_whitelist', 'file,rtp,udp',
+        '-buffer_size', '10M',
         '-i', 'input.sdp',
-        '-filter_complex', '[0:v]scale=1280:720,format=yuv420p[v]',
+        '-filter_complex', '[0:v]scale=w=1280:h=720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=yuv420p[v]',
         '-map', '[v]',
         '-c:v', 'libvpx',
-        '-b:v', '2M',
+        '-b:v', '1M',
         '-deadline', 'realtime',
-        '-cpu-used', '4',
+        '-cpu-used', '8',
         '-auto-alt-ref', '0',
-        '-keyint_min', '15',
-        '-g', '15',
+        '-lag-in-frames', '0',
+        '-error-resilient', '1',
+        '-keyint_min', '30',
+        '-g', '30',
+        '-bufsize', '2M',
+        '-rc_lookahead', '0',
+        '-quality', 'realtime',
+        '-max_muxing_queue_size', '1024',
+        '-max_delay', '0',
+        '-fflags', 'nobuffer+discardcorrupt+fastseek',
+        '-flags', 'low_delay',
         '-f', 'rtp',
         '-payload_type', '96',
         '-ssrc', '1234',
@@ -98,16 +105,26 @@ def process_video_stream():
         
         # Monitor the process
         def log_stderr(process, name):
+            consecutive_errors = 0
             while True:
                 line = process.stderr.readline()
                 if not line:
                     break
                 line = line.decode('utf-8', errors='ignore').strip()
-                if line:  # Remove the frame= filter to see all output
+                if line:
                     if 'error' in line.lower() or 'could not' in line.lower():
+                        consecutive_errors += 1
                         logging.error(f"{name} FFmpeg error: {line}")
+                        if consecutive_errors > 10:
+                            logging.error("Too many consecutive errors, restarting...")
+                            process.terminate()
+                            break
                     else:
-                        logging.debug(f"{name} FFmpeg: {line}")
+                        consecutive_errors = 0
+                        if 'frame=' in line:  # Log frame processing
+                            logging.info(f"{name} FFmpeg processing: {line}")
+                        else:
+                            logging.debug(f"{name} FFmpeg: {line}")
         
         # Start monitoring thread
         input_thread = threading.Thread(target=log_stderr, args=(input_process, "Input"))

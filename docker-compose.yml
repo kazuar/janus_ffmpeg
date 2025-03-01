@@ -4,7 +4,7 @@ services:
     build: 
       context: ./janus
     ports:
-      - "8188:8188"  # WebSocket
+      - "8188:8188"  # WebSocket port (internal only)
       - "8088:8088"  # REST API
       - "6002:6002/udp"  # RTP port for video processor
       - "6001:6001/udp"  # RTCP port
@@ -39,6 +39,16 @@ services:
         hard: 65536
     environment:
       - UDP_BUFFER_SIZE=26214400
+
+  client:
+    build: 
+      context: ./client
+    ports:
+      - "8080:80"  # Expose client on port 8080
+    networks:
+      - video_network
+    depends_on:
+      - janus
 
 networks:
   video_network:

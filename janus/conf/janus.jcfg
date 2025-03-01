@@ -30,3 +30,9 @@ webrtc: {
 transports: {
     disable = "libjanus_pfunix.so"  # Disable Unix sockets
 }
+
+nat: {
+    stun_server = "stun.l.google.com"
+    stun_port = 19302
+    nice_debug = false
+}
