@@ -37,16 +37,14 @@ def create_sdp_file():
     sdp_content = """v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=Video Processing Stream
-c=IN IP4 172.19.0.2
+c=IN IP4 0.0.0.0
 t=0 0
 m=video 6002 RTP/AVP 96
 a=rtpmap:96 VP8/90000
-a=sendonly
+a=recvonly
 a=rtcp-mux
 a=framerate:30
-a=fmtp:96 max-fr=30;max-fs=3600
-a=width:640
-a=height:360
+a=fmtp:96 max-fr=30;max-fs=3600;width=1280;height=720
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -67,18 +65,19 @@ def process_video_stream():
         '-analyzeduration', '30M',
         '-protocol_whitelist', 'file,rtp,udp',
         '-i', 'input.sdp',
-        '-map', '0:v:0',  # Explicitly map video stream
-        '-c:v', 'copy',
-        '-bsf:v', 'vp8_metadata,dump_extra',  # Add bitstream filters
+        '-map', '0:v:0',
+        '-c:v', 'libvpx',  # Use libvpx encoder instead of copy
+        '-b:v', '2M',      # Set bitrate
+        '-deadline', 'realtime',  # Optimize for realtime
+        '-cpu-used', '4',  # Speed up encoding
+        '-auto-alt-ref', '0',  # Disable alt refs for lower latency
         '-f', 'rtp',
         '-payload_type', '96',
         '-ssrc', '1234',
-        '-sdp_file', 'output.sdp',  # Generate output SDP
-        'rtp://janus:8004?pkt_size=1200'
+        f'rtp://janus:6001?pkt_size=1200'
     ]
 
     try:
-        # Start input process
         input_process = subprocess.Popen(
             input_args,
             stdout=subprocess.PIPE,

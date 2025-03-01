@@ -24,7 +24,15 @@ room-1234: {
     rtp_forward_always_on = true
     rtp_forward_bufferkf = true
     
+    # Add return path configuration
+    rtp_return_port = 6001
+    rtp_return_enabled = true
+    
     # Video quality settings
     video_bitrate = 2048000
     video_keyframe_interval = 15
+
+    # Allow subscribers
+    notify_joining = true
+    max_publishers = 2  # Allow for both original and processed feeds
 }
