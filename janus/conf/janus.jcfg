@@ -1,0 +1,32 @@
+# General configuration
+general: {
+    debug_level = 4
+    debug_timestamps = true
+    debug_colors = true
+    interface = "eth0"  # Docker's default network interface
+    mdns_enabled = false  # Disable mDNS since we're local
+}
+
+# Media settings
+media: {
+    rtp_port_range = "20000-20050"  # Smaller range for local testing
+    dtls_mtu = 1200
+    no_media_timer = 1
+}
+
+# WebRTC settings
+webrtc: {
+    debug_level = 4
+    dscp = true
+    nack_optimizations = true
+    ice_lite = true  # Use ICE-Lite for local testing
+    ice_tcp = true
+    ipv6 = false
+    min_nack_queue = 500
+    rtp_port_range = "20000-20050"  # Match the media port range
+}
+
+# Transports to enable
+transports: {
+    disable = "libjanus_pfunix.so"  # Disable Unix sockets
+}

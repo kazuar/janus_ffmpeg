@@ -46,6 +46,8 @@ function initJanus() {
             console.log("Janus initialized");
             janus = new Janus({
                 server: 'ws://localhost:8188/janus',
+                ipv6: false,
+                withCredentials: false,
                 success: function() {
                     console.log("Connected to Janus gateway");
                     janus.attach({
