@@ -11,16 +11,21 @@ general: {
 room-1234: {
     description = "Video Processing Room"
     is_private = false
-    secret = "adminpwd123"         # Make sure this matches
-    pin = "roompwd123"            # Add a room pin
+    secret = "adminpwd123"
+    pin = "roompwd123"
     publishers = 1
-    video_codec = "vp8"
+    video_codec = "vp9"  # Keep VP9 for WebRTC
+    video_svc = false
+    videoorient_ext = true
+    video_rtcp_fir = true
+    video_rtcp_pli = true
+    video_rtcp_nack = true
     
     # RTP forwarding configuration
     rtp_forward_video_pt = 96
     rtp_forward_host = "video_processor"
     rtp_forward_port = 6002
-    rtp_forward_codec = "vp8"
+    rtp_forward_codec = "vp8"  # Changed to VP8 for RTP forwarding
     rtp_forward_video_ssrc = 1234
     rtp_forward_always_on = true
     rtp_forward_bufferkf = true

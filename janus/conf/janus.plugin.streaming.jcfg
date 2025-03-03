@@ -10,5 +10,7 @@ processed-stream: {
     videoport = 6001
     videopt = 96
     videortpmap = "VP8/90000"
-    videofmtp = "max-fs=3600"
+    videofmtp = "max-fr=30;max-fs=3600"
+    videobufferkf = true
+    videokeyframe = 15
 }

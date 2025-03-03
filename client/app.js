@@ -85,7 +85,7 @@ function attachVideoRoom() {
                 publishOwnFeed();
             } else if (msg["videoroom"] === "event") {
                 if (msg["configured"] === "ok") {
-                    // Set up RTP forwarding to video processor
+                    console.log("Setting up RTP forwarding with VP8 codec...");
                     videoroom.send({
                         message: {
                             request: "rtp_forward",
@@ -100,8 +100,7 @@ function attachVideoRoom() {
                         },
                         success: function(result) {
                             console.log("RTP forwarding setup:", result);
-                            // Now attach to streaming plugin
-                            setTimeout(attachProcessedStream, 1000);  // Add small delay
+                            setTimeout(attachProcessedStream, 1000);
                         }
                     });
                 }
@@ -182,6 +181,7 @@ function attachProcessedStream() {
 }
 
 function publishOwnFeed() {
+    console.log("Publishing feed with VP9 codec...");
     videoroom.createOffer({
         media: {
             audioRecv: false,
@@ -191,12 +191,13 @@ function publishOwnFeed() {
             video: {
                 width: { exact: 1280 },
                 height: { exact: 720 },
-                codec: "vp8"
+                codec: "vp9"
             }
         },
         stream: localStream,
         success: function(jsep) {
-            console.log("Got publisher SDP:", jsep);
+            console.log("Got publisher SDP with VP9:", jsep);
+            console.log("SDP details:", jsep.sdp);
             videoroom.send({
                 message: {
                     request: "publish",
@@ -207,8 +208,8 @@ function publishOwnFeed() {
             });
         },
         error: function(error) {
-            console.error("Error creating offer:", error);
-            $('#status').text("Error publishing stream: " + error);
+            console.error("Error creating VP9 offer:", error);
+            $('#status').text("Error publishing VP9 stream: " + error);
         }
     });
 }

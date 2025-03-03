@@ -43,7 +43,7 @@ t=0 0
 m=video 6002 RTP/AVP 96
 a=rtpmap:96 VP8/90000
 a=fmtp:96 max-fr=30;max-fs=3600
-a=recvonly
+a=sendonly
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -60,10 +60,11 @@ def process_video_stream():
         'ffmpeg',
         '-hide_banner',
         '-thread_queue_size', '8192',
-        '-probesize', '256M',
-        '-analyzeduration', '60M',
+        '-probesize', '512M',
+        '-analyzeduration', '120M',
         '-protocol_whitelist', 'file,rtp,udp',
         '-buffer_size', '10M',
+        '-fflags', '+genpts+igndts',
         '-i', 'input.sdp',
         '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',
         '-c:v', 'rawvideo',
@@ -82,18 +83,20 @@ def process_video_stream():
         '-video_size', '1280x720',
         '-framerate', '30',
         '-i', '-',
-        '-c:v', 'libvpx',
+        '-c:v', 'libvpx',  # Changed to VP8
         '-b:v', '2M',
         '-deadline', 'realtime',
-        '-cpu-used', '4',
+        '-cpu-used', '8',
         '-auto-alt-ref', '0',
         '-lag-in-frames', '0',
         '-error-resilient', '1',
         '-keyint_min', '15',
         '-g', '15',
-        '-bufsize', '4M',
-        '-rc_lookahead', '10',
+        '-threads', '4',
         '-quality', 'realtime',
+        '-speed', '8',
+        '-bufsize', '6M',
+        '-rc_lookahead', '0',
         '-max_muxing_queue_size', '1024',
         '-max_delay', '0',
         '-fflags', 'nobuffer+discardcorrupt+fastseek',
@@ -107,6 +110,10 @@ def process_video_stream():
     ]
 
     try:
+        logging.info("Starting FFmpeg processes with VP8 codec configuration...")
+        logging.debug(f"Input arguments: {' '.join(input_args)}")
+        logging.debug(f"Output arguments: {' '.join(output_args)}")
+        
         # Start input FFmpeg process
         input_process = subprocess.Popen(
             input_args,
