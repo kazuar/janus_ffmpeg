@@ -1,14 +1,47 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    yasm \
+    git \
+    wget \
+    nasm \
+    cmake \
+    libx264-dev \
+    libx265-dev \
+    libvpx-dev \
+    libmp3lame-dev \
+    libopus-dev \
     python3 \
     python3-pip \
-    ffmpeg \
     libsm6 \
     libxext6 \
     libgl1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Set working directory for build
+WORKDIR /tmp
+
+# Download and compile FFmpeg
+RUN wget https://ffmpeg.org/releases/ffmpeg-7.1.tar.bz2 && \
+    tar xjf ffmpeg-7.1.tar.bz2 && \
+    cd ffmpeg-7.1 && \
+    ./configure \
+        --enable-gpl \
+        --enable-libx264 \
+        --enable-libx265 \
+        --enable-libvpx \
+        --enable-libmp3lame \
+        --enable-libopus \
+        --enable-shared && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
+# Clean up build files
+RUN rm -rf /tmp/*
 
 WORKDIR /app
 
