@@ -24,6 +24,19 @@ RUN apt-get update && apt-get install -y \
 # Set working directory for build
 WORKDIR /tmp
 
+# Build libaom from source
+RUN git clone https://aomedia.googlesource.com/aom && \
+    mkdir aom_build && \
+    cd aom_build && \
+    cmake ../aom \
+        -DENABLE_TESTS=0 \
+        -DENABLE_TOOLS=0 \
+        -DENABLE_DOCS=0 \
+        -DENABLE_EXAMPLES=0 && \
+    make -j$(nproc) && \
+    make install && \
+    ldconfig
+
 # Download and compile FFmpeg
 RUN wget https://ffmpeg.org/releases/ffmpeg-7.1.tar.bz2 && \
     tar xjf ffmpeg-7.1.tar.bz2 && \
@@ -41,7 +54,8 @@ RUN wget https://ffmpeg.org/releases/ffmpeg-7.1.tar.bz2 && \
         --enable-pthreads \
         --enable-hardcoded-tables \
         --disable-debug \
-        --disable-doc && \
+        --disable-doc \
+        --enable-libaom && \
     make -j$(nproc) && \
     make install && \
     ldconfig
