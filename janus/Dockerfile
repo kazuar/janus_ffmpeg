@@ -42,9 +42,9 @@ RUN git clone https://aomedia.googlesource.com/aom && \
     ldconfig
 
 # Download and compile FFmpeg
-RUN wget https://ffmpeg.org/releases/ffmpeg-7.1.tar.bz2 && \
-    tar xjf ffmpeg-7.1.tar.bz2 && \
-    cd ffmpeg-7.1 && \
+RUN wget https://ffmpeg.org/releases/ffmpeg-7.1.1.tar.bz2 && \
+    tar xjf ffmpeg-7.1.1.tar.bz2 && \
+    cd ffmpeg-7.1.1 && \
     ./configure \
         --enable-gpl \
         --enable-libx264 \
