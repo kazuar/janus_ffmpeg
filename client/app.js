@@ -92,10 +92,14 @@ function attachVideoRoom() {
                             room: 1234,
                             publisher_id: myid,
                             host: "video_processor",
-                            port: 6002,
-                            video_port: 6002,
-                            video_pt: 96,
-                            video_codec: "vp8",
+                            streams: [
+                                {
+                                    mid: "1",
+                                    port: 6002,
+                                    ssrc: 1234,
+                                    pt: 96
+                                }
+                            ],
                             secret: "adminpwd123"
                         },
                         success: function(result) {
@@ -183,6 +187,15 @@ function attachProcessedStream() {
 
 function publishOwnFeed() {
     videoroom.createOffer({
+        tracks: [
+            {
+                type: "video",
+                capture: true,
+                // svc: true,
+                recv: false,
+                send: true
+            }
+        ],
         media: {
             audioRecv: false,
             videoRecv: false,
@@ -191,7 +204,6 @@ function publishOwnFeed() {
             video: {
                 width: { exact: 640 },
                 height: { exact: 480 },
-                codec: "vp8"
             }
         },
         stream: localStream,
@@ -200,8 +212,7 @@ function publishOwnFeed() {
             videoroom.send({
                 message: {
                     request: "publish",
-                    video: true,
-                    audio: false
+                    videocodec: "av1"
                 },
                 jsep: jsep
             });

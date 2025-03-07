@@ -38,13 +38,12 @@ def create_sdp_file():
     sdp_content = """v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=Video Processing Stream
-c=IN IP4 0.0.0.0
+c=IN IP4 127.0.0.1
 t=0 0
-m=video 6002 RTP/AVP 96
-a=rtpmap:96 VP8/90000
-a=fmtp:96 max-fs=3600;max-fr=30
+m=video 6002 RTP/AVPF 96
+a=rtpmap:96 AV1/90000
+a=fmtp:96 level-idx=5;profile=0;tier=0
 a=recvonly
-a=rtcp-mux
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -61,9 +60,10 @@ def process_video_stream():
         'ffmpeg',
         '-hide_banner',
         '-protocol_whitelist', 'file,rtp,udp',
+        # '-analyzeduration', '900M',
+        # '-probesize', '900M',
+        '-c:v', 'libaom-av1',
         '-i', 'input.sdp',
-        '-c:v', 'rawvideo',
-        '-pix_fmt', 'bgr24',
         '-f', 'rawvideo',
         '-video_size', '640x480',
         '-'
@@ -78,7 +78,7 @@ def process_video_stream():
         '-video_size', '640x480',
         '-framerate', '30',
         '-i', '-',
-        '-c:v', 'libvpx',
+        '-c:v', 'libaom-av1',
         '-b:v', '2M',
         '-deadline', 'realtime',
         '-cpu-used', '4',
@@ -147,7 +147,11 @@ def process_video_stream():
             # Read raw video frame from input
             raw_frame = input_process.stdout.read(frame_size)
             if not raw_frame:
+                logging.warning("No frame data received")
                 break
+            
+            # Print the raw frame size
+            print(f"Raw frame size: {len(raw_frame)}")
             
             try:
                 # Convert to numpy array for OpenCV
