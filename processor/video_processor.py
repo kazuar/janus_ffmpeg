@@ -42,8 +42,9 @@ c=IN IP4 0.0.0.0
 t=0 0
 m=video 6002 RTP/AVP 96
 a=rtpmap:96 VP8/90000
-a=fmtp:96 max-fr=30;max-fs=3600
+a=fmtp:96 max-fs=3600;max-fr=30
 a=recvonly
+a=rtcp-mux
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -59,19 +60,12 @@ def process_video_stream():
     input_args = [
         'ffmpeg',
         '-hide_banner',
-        '-thread_queue_size', '8192',
-        '-probesize', '500M',
-        '-analyzeduration', '500M',
         '-protocol_whitelist', 'file,rtp,udp',
-        '-buffer_size', '10M',
-        '-flags', 'low_delay',
-        '-fflags', '+genpts+nobuffer+igndts',
         '-i', 'input.sdp',
-        '-vf', 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2',
         '-c:v', 'rawvideo',
         '-pix_fmt', 'bgr24',
         '-f', 'rawvideo',
-        '-video_size', '1280x720',
+        '-video_size', '640x480',
         '-'
     ]
 
@@ -81,7 +75,7 @@ def process_video_stream():
         '-hide_banner',
         '-f', 'rawvideo',
         '-pixel_format', 'bgr24',
-        '-video_size', '1280x720',
+        '-video_size', '640x480',
         '-framerate', '30',
         '-i', '-',
         '-c:v', 'libvpx',
@@ -148,7 +142,7 @@ def process_video_stream():
         output_thread.start()
 
         # Process frames with OpenCV
-        frame_size = 1280 * 720 * 3  # width * height * 3 channels (BGR)
+        frame_size = 640 * 480 * 3  # width * height * 3 channels (BGR)
         while True:
             # Read raw video frame from input
             raw_frame = input_process.stdout.read(frame_size)
@@ -157,7 +151,7 @@ def process_video_stream():
             
             try:
                 # Convert to numpy array for OpenCV
-                frame = np.frombuffer(raw_frame, np.uint8).reshape(720, 1280, 3)
+                frame = np.frombuffer(raw_frame, np.uint8).reshape(480, 640, 3)
                 
                 # Apply more pronounced edge detection
                 edges = cv2.Canny(frame, 50, 150)  # Adjusted thresholds
@@ -184,8 +178,8 @@ def process_video_stream():
                           2)
                 
                 # Ensure frame is in correct format
-                if processed_frame.shape != (720, 1280, 3):
-                    processed_frame = cv2.resize(processed_frame, (1280, 720))
+                if processed_frame.shape != (480, 640, 3):
+                    processed_frame = cv2.resize(processed_frame, (640, 480))
                 
                 # Write processed frame to output
                 output_process.stdin.write(processed_frame.tobytes())

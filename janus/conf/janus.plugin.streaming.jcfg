@@ -10,5 +10,7 @@ processed-stream: {
     videoport = 6001
     videopt = 96
     videortpmap = "VP8/90000"
-    videofmtp = "max-fs=3600"
+    videofmtp = "max-fs=3600;max-fr=30"
+    videobufferkf = true  # Buffer until keyframe
+    videokf_req_interval = 5  # Request keyframes every 5 seconds
 }

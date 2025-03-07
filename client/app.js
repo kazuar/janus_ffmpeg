@@ -19,8 +19,8 @@ $(document).ready(function() {
             // First get the camera stream and show it locally
             localStream = await navigator.mediaDevices.getUserMedia({
                 video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
                 },
                 audio: false
             });
@@ -189,8 +189,8 @@ function publishOwnFeed() {
             audioSend: false,
             videoSend: true,
             video: {
-                width: { exact: 1280 },
-                height: { exact: 720 },
+                width: { exact: 640 },
+                height: { exact: 480 },
                 codec: "vp8"
             }
         },
