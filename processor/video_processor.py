@@ -38,12 +38,15 @@ def create_sdp_file():
     sdp_content = """v=0
 o=- 0 0 IN IP4 127.0.0.1
 s=Video Processing Stream
-c=IN IP4 127.0.0.1
+c=IN IP4 0.0.0.0
 t=0 0
-m=video 6002 RTP/AVPF 96
-a=rtpmap:96 AV1/90000
-a=fmtp:96 level-idx=5;profile=0;tier=0
+m=video 6002 RTP/AVPF 45
+a=rtpmap:45 AV1/90000
+a=fmtp:45 level-idx=5;profile=0;tier=0
 a=recvonly
+a=framerate:30
+a=width:640
+a=height:480
 """
     with open('input.sdp', 'w') as f:
         f.write(sdp_content)
@@ -56,15 +59,17 @@ def process_video_stream():
     create_sdp_file()
     
     # Input stream configuration
+    # Get stream and save to local file
     input_args = [
         'ffmpeg',
         '-hide_banner',
         '-protocol_whitelist', 'file,rtp,udp',
-        # '-analyzeduration', '900M',
-        # '-probesize', '900M',
+        # '-analyzeduration', '2147483647',  # Maximum analysis duration
+        # '-probesize', '2147483647',        # Maximum probe size
         '-c:v', 'libaom-av1',
         '-i', 'input.sdp',
         '-f', 'rawvideo',
+        '-pix_fmt', 'bgr24',
         '-video_size', '640x480',
         '-'
     ]
@@ -96,10 +101,10 @@ def process_video_stream():
         '-flags', 'low_delay',
         '-force_key_frames', 'expr:gte(t,n_forced*1)',
         '-f', 'rtp',
-        '-payload_type', '96',
+        '-payload_type', '45',
         '-ssrc', '1234',
         '-sdp_file', 'output.sdp',
-        f'rtp://janus:6001?pkt_size=1200'
+        'rtp://janus:6001?pkt_size=1200'
     ]
 
     try:
@@ -108,7 +113,7 @@ def process_video_stream():
             input_args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            bufsize=10*1024*1024  # 10MB buffer
+            bufsize=100*1024*1024  # 10MB buffer
         )
         
         # Start output FFmpeg process
@@ -116,7 +121,7 @@ def process_video_stream():
             output_args,
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            bufsize=10*1024*1024  # 10MB buffer
+            bufsize=100*1024*1024  # 10MB buffer
         )
         
         logging.info("FFmpeg processes started successfully")

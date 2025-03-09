@@ -6,6 +6,7 @@ general: {
     rtp_forward_always_on = true    # Keep RTP forwarders alive
     notify_joining = true           # Notify about joins
     notify_leaving = true           # Notify about leaves
+    debug_level = 7
 }
 
 room-1234: {

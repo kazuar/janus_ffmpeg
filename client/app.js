@@ -68,9 +68,9 @@ function attachVideoRoom() {
             videoroom.send({
                 message: {
                     request: "join",
+                    ptype: "publisher",
                     room: 1234,
                     pin: "roompwd123",  // Add room pin
-                    ptype: "publisher",
                     display: "User " + Math.round(Math.random() * 100)
                 }
             });
@@ -80,11 +80,16 @@ function attachVideoRoom() {
         },
         onmessage: function(msg, jsep) {
             console.log("Videoroom message:", msg);
+            if (jsep) {
+                console.log("Received jsep:", jsep.type);
+                console.log("Codecs in received SDP:", jsep.sdp.match(/a=rtpmap:[0-9]+ [A-Z0-9/]+/g));
+            }
             if (msg["videoroom"] === "joined") {
                 myid = msg["id"];
                 publishOwnFeed();
             } else if (msg["videoroom"] === "event") {
                 if (msg["configured"] === "ok") {
+                    console.log("Videoroom configured ok");
                     // Set up RTP forwarding to video processor
                     videoroom.send({
                         message: {
@@ -94,10 +99,10 @@ function attachVideoRoom() {
                             host: "video_processor",
                             streams: [
                                 {
-                                    mid: "1",
+                                    mid: "0",
                                     port: 6002,
                                     ssrc: 1234,
-                                    pt: 96
+                                    pt: 45
                                 }
                             ],
                             secret: "adminpwd123"
@@ -190,23 +195,23 @@ function publishOwnFeed() {
         tracks: [
             {
                 type: "video",
+                mid: "0",
                 capture: true,
                 // svc: true,
-                recv: false,
-                send: true
+                recv: false
             }
         ],
-        media: {
-            audioRecv: false,
-            videoRecv: false,
-            audioSend: false,
-            videoSend: true,
-            video: {
-                width: { exact: 640 },
-                height: { exact: 480 },
-            }
-        },
-        stream: localStream,
+        // media: {
+        //     audioRecv: false,
+        //     videoRecv: false,
+        //     audioSend: false,
+        //     videoSend: true,
+        //     video: {
+        //         width: { exact: 640 },
+        //         height: { exact: 480 },
+        //     }
+        // },
+        // stream: localStream,
         success: function(jsep) {
             console.log("Got publisher SDP:", jsep);
             videoroom.send({
