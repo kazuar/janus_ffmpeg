@@ -8,9 +8,8 @@ processed-stream: {
     description = "Processed Video Stream"
     video = true
     videoport = 6001
-    videopt = 96
-    videortpmap = "VP8/90000"
-    videofmtp = "max-fs=3600;max-fr=30"
+    videopt = 45
+    videocodec = "av1"
     videobufferkf = true  # Buffer until keyframe
     videokf_req_interval = 5  # Request keyframes every 5 seconds
 }

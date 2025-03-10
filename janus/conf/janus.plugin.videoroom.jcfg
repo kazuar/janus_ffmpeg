@@ -6,6 +6,7 @@ general: {
     rtp_forward_always_on = true    # Keep RTP forwarders alive
     notify_joining = true           # Notify about joins
     notify_leaving = true           # Notify about leaves
+    debug_level = 7
 }
 
 room-1234: {
@@ -14,21 +15,7 @@ room-1234: {
     secret = "adminpwd123"         # Make sure this matches
     pin = "roompwd123"            # Add a room pin
     publishers = 1
-    video_codec = "vp8"
-    
-    # RTP forwarding configuration
-    rtp_forward_video_pt = 96
-    rtp_forward_host = "video_processor"
-    rtp_forward_port = 6002
-    rtp_forward_codec = "vp8"
-    rtp_forward_video_ssrc = 1234
-    rtp_forward_always_on = true
-    rtp_forward_bufferkf = true
-    
-    # Video quality settings
-    video_bitrate = 2048000
-    video_keyframe_interval = 15
-    videobuffersize = 6144
+    videocodec = "av1"
     
     # Allow subscribers
     notify_joining = true

@@ -68,9 +68,9 @@ function attachVideoRoom() {
             videoroom.send({
                 message: {
                     request: "join",
+                    ptype: "publisher",
                     room: 1234,
                     pin: "roompwd123",  // Add room pin
-                    ptype: "publisher",
                     display: "User " + Math.round(Math.random() * 100)
                 }
             });
@@ -80,11 +80,16 @@ function attachVideoRoom() {
         },
         onmessage: function(msg, jsep) {
             console.log("Videoroom message:", msg);
+            if (jsep) {
+                console.log("Received jsep:", jsep.type);
+                console.log("Codecs in received SDP:", jsep.sdp.match(/a=rtpmap:[0-9]+ [A-Z0-9/]+/g));
+            }
             if (msg["videoroom"] === "joined") {
                 myid = msg["id"];
                 publishOwnFeed();
             } else if (msg["videoroom"] === "event") {
                 if (msg["configured"] === "ok") {
+                    console.log("Videoroom configured ok");
                     // Set up RTP forwarding to video processor
                     videoroom.send({
                         message: {
@@ -92,10 +97,14 @@ function attachVideoRoom() {
                             room: 1234,
                             publisher_id: myid,
                             host: "video_processor",
-                            port: 6002,
-                            video_port: 6002,
-                            video_pt: 96,
-                            video_codec: "vp8",
+                            streams: [
+                                {
+                                    mid: "0",
+                                    port: 6002,
+                                    ssrc: 1234,
+                                    pt: 45
+                                }
+                            ],
                             secret: "adminpwd123"
                         },
                         success: function(result) {
@@ -183,25 +192,32 @@ function attachProcessedStream() {
 
 function publishOwnFeed() {
     videoroom.createOffer({
-        media: {
-            audioRecv: false,
-            videoRecv: false,
-            audioSend: false,
-            videoSend: true,
-            video: {
-                width: { exact: 640 },
-                height: { exact: 480 },
-                codec: "vp8"
+        tracks: [
+            {
+                type: "video",
+                mid: "0",
+                capture: true,
+                // svc: true,
+                recv: false
             }
-        },
-        stream: localStream,
+        ],
+        // media: {
+        //     audioRecv: false,
+        //     videoRecv: false,
+        //     audioSend: false,
+        //     videoSend: true,
+        //     video: {
+        //         width: { exact: 640 },
+        //         height: { exact: 480 },
+        //     }
+        // },
+        // stream: localStream,
         success: function(jsep) {
             console.log("Got publisher SDP:", jsep);
             videoroom.send({
                 message: {
                     request: "publish",
-                    video: true,
-                    audio: false
+                    videocodec: "av1"
                 },
                 jsep: jsep
             });
